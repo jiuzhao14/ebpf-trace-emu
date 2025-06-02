@@ -3,6 +3,42 @@ This repository provides a Mininet environment to demonstrate an eBPF-based emul
 
 __REMARK__: The use of Mininet here is only for conveniently testing out the emulation method over two virtual hosts on a local host. The method does not need any mechanism from Mininet. The eBPF-based emulation method can (and is supposed to) be deployed to real-life nodes of a physical network. Please see the commands of the Mininet scripts for the deployment details.
 
+__⚠️ WARNING - Performance Limitations in Virtual Environment__: **Users should be aware that the performance characteristics observed in this Mininet-based virtual environment may significantly differ from those in physical network deployments.** The virtual environment introduces several performance overhead factors:
+
+- **Virtual Interface Overhead**: Mininet uses veth (virtual Ethernet) pairs which require additional memory copying and packet processing compared to physical network interfaces.
+- **Generic XDP Mode**: The XDP programs in this virtual environment operate in "generic" mode rather than "native" mode, resulting in 10-20x lower performance as packets cannot fully bypass the kernel network stack.
+- **Kernel Network Stack**: Unlike physical deployments where XDP can bypass most of the kernel networking stack, virtual interfaces must traverse the complete Linux networking stack, introducing additional latency and CPU overhead.
+- **Memory Copy Operations**: Each packet traversing veth interfaces requires multiple memory copy operations that are not present in physical network cards with DMA capabilities.
+
+**For accurate performance evaluation and production deployments, this eBPF-based emulation method should be tested and deployed on physical network infrastructure.** The throughput and latency measurements in Mininet should be considered as functional validation only, not representative of real-world performance.
+
+## Queue Depth Configuration in Virtual Environment
+
+__📋 Technical Note - Queue Depth Modifications__: The Mininet deployment script includes specific queue depth configurations to address shallow queue problems inherent in virtual network environments:
+
+**Key Configuration Changes:**
+- **FQ Scheduler flow_limit**: Modified from default 100 packets to **5000 packets**
+- **HTB Traffic Control**: Added explicit bandwidth limiting (60Mbps) with proper quantum sizing (10000 bytes)
+- **FQ Queue Management**: Enhanced flow isolation with deeper per-flow queues
+
+**Reasons for Queue Depth Modifications:**
+
+1. **Shallow Default Queues**: Linux FQ scheduler default `flow_limit=100` packets is insufficient for handling:
+   - High-bandwidth applications (like iperf3) that can generate packet bursts
+   - Delay emulation scenarios where packets need to be buffered for timing control
+   - Virtual interface latency variations that can cause temporary queue buildups
+
+2. **Virtual Interface Characteristics**: Unlike physical interfaces, veth pairs:
+   - Lack hardware buffering capabilities
+   - Experience irregular packet processing timing
+   - Require larger software queues to prevent unnecessary drops during burst traffic
+
+3. **eBPF Delay Emulation Requirements**: The `edt_delay_packet.c` program schedules packet transmission times, requiring sufficient queue space to buffer packets waiting for their designated transmission time.
+
+4. **Performance Testing Compatibility**: The modified queue depth ensures that performance testing tools (iperf, irtt) can achieve their intended traffic patterns without being limited by shallow queues rather than actual network constraints.
+
+**Impact**: With `flow_limit=5000`, each flow can queue up to 5000 packets (vs. 100 default), preventing premature packet drops during legitimate traffic bursts while maintaining fair queuing behavior across multiple flows.
+
 # The Mininet environment for eBPF-based Starlink emulation
 
 Please ensure that the host of Mininet runs a Linux kernel version supporting eBPF features. Linux 5.11 or higher is recommended. The following procedures are tested on Ubuntu 22.04 with Linux 5.15.0-23-generic. The environment consists of two hosts as follows, where the uplink (h1->h2) and downlink propagation delays are emulated on `h1` and `h2` using `edt_delay_packet.o`, respectively, and the corresponding losses are emulated on `h2` and `h1` using `xdp_drop_packet.o`, repsectively. 

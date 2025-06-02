@@ -1,4 +1,3 @@
-
 #!/usr/bin/python
 '''
 Created on Mon Sep 30 2024
@@ -37,8 +36,10 @@ def deploy_ebpf():
     h1.cmd('sudo clang -O2 -g -target bpf -c edt_delay_packet.c -o edt_delay_packet.o')
     h1.cmd('sudo tc qdisc add dev h1-eth0 clsact')
     h1.cmd('sudo tc filter add dev h1-eth0 egress bpf direct-action obj edt_delay_packet.o sec delay_ebpf')
-    h1.cmd('sudo tc qdisc add dev h1-eth0 root fq')
- 
+    h1.cmd('sudo tc qdisc add dev h1-eth0 root handle 1: htb default 10 r2q 1')
+    h1.cmd('sudo tc class add dev h1-eth0 parent 1: classid 1:1 htb rate 60mbit ceil 60mbit quantum 10000 ')
+    h1.cmd('sudo tc qdisc add dev h1-eth0 parent 1:1 handle 10: fq flow_limit 5000')
+    h1.cmd('sudo tc filter add dev h1-eth0 parent 1: protocol ip u32 match u32 0 0 flowid 1:1') 
     #h1.cmd('mount -t bpf bpf /sys/fs/bpf/')
     h1.cmd('sudo clang -O2 -g -target bpf -c xdp_drop_packet.c -o xdp_drop_packet.o')
     h1.cmd('sudo ip link set dev h1-eth0 xdpgeneric obj xdp_drop_packet.o sec xdp_port_filter')
@@ -50,8 +51,10 @@ def deploy_ebpf():
     h2.cmd('sudo clang -O2 -g -target bpf -c edt_delay_packet.c -o edt_delay_packet.o')
     h2.cmd('sudo tc qdisc add dev h2-eth0 clsact')
     h2.cmd('sudo tc filter add dev h2-eth0 egress bpf direct-action obj edt_delay_packet.o sec delay_ebpf')
-    h2.cmd('sudo tc qdisc add dev h2-eth0 root fq')
- 
+    h2.cmd('sudo tc qdisc add dev h2-eth0 root handle 1: htb default 10 r2q 1')
+    h2.cmd('sudo tc class add dev h2-eth0 parent 1: classid 1:1 htb rate 60mbit ceil 60mbit quantum 10000')
+    h2.cmd('sudo tc qdisc add dev h2-eth0 parent 1:1 handle 10: fq flow_limit 5000')
+    h2.cmd('sudo tc filter add dev h2-eth0 parent 1: protocol ip u32 match u32 0 0 flowid 1:1') 
 
     #h2.cmd('mount -t bpf bpf /sys/fs/bpf/')
     h2.cmd('sudo clang -O2 -g -target bpf -c xdp_drop_packet.c -o xdp_drop_packet.o')
