@@ -3,6 +3,12 @@ This repository provides a Mininet environment to demonstrate an eBPF-based emul
 
 __REMARK__: The use of Mininet here is only for conveniently testing out the emulation method over two virtual hosts on a local host. The method does not need any mechanism from Mininet. The eBPF-based emulation method can (and is supposed to) be deployed to real-life nodes of a physical network. Please see the commands of the Mininet scripts for the deployment details.
 
+__WARNING - Performance Limitations in Virtual Environment__: Users should be aware that the performance characteristics observed in this Mininet-based virtual environment may significantly differ from those in physical network deployments. The virtual environment introduces several performance overhead factors:
+
+- **Virtual Interface Overhead**: Mininet uses veth (virtual Ethernet) pairs which require additional memory copying and packet processing compared to physical network interface.
+-  **Kernel Network Stack**: Unlike physical deployments where XDP can bypass most of the kernel network stack, virtual interfaces must traverse the complete Linux networking stack, introducing additional latency and CPU overhead.
+-  **Memory Copy Operations**: Each packet traversing veth interfaces requires multiple memory copy operations that are noet present in physical network cards with DMA capabilities.
+
 # The Mininet environment for eBPF-based Starlink emulation
 
 Please ensure that the host of Mininet runs a Linux kernel version supporting eBPF features. Linux 5.11 or higher is recommended. The following procedures are tested on Ubuntu 22.04 with Linux 5.15.0-23-generic. The environment consists of two hosts as follows, where the uplink (h1->h2) and downlink propagation delays are emulated on `h1` and `h2` using `edt_delay_packet.o`, respectively, and the corresponding losses are emulated on `h2` and `h1` using `xdp_drop_packet.o`, repsectively. 
