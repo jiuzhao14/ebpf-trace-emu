@@ -51,7 +51,7 @@ Please ensure that the host of Mininet runs a Linux kernel version supporting eB
 ## Step 1: Install necessary tools for eBPF
 ```bash
 sudo apt update && sudo apt upgrade
-sudo apt install linux-tools-common linux-tools-generic linux-tools-$(uname -r)
+sudo apt install linux-tools-common linux-tools-generic linux-tools-$(uname -r) libbpf-dev
 ```
 
 ## Step 2: Prepare trace files from irtt measurement data
